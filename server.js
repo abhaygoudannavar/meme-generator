@@ -345,14 +345,19 @@ app.post("/api/generate", async (req, res) => {
 
     let targetTemplate = template;
     if (customImage) {
+      if (typeof customImage !== "string") {
+        return res.status(400).json({ error: "Custom image must be a string" });
+      }
       targetTemplate = "custom";
+    } else if (targetTemplate === "custom") {
+      return res.status(400).json({ error: "Custom image data is required for custom template" });
     }
 
     if (!topic || typeof topic !== "string") {
       return res.status(400).json({ error: "Topic is required" });
     }
 
-    if (!customImage && !MEME_TEMPLATES[targetTemplate]) {
+    if (!MEME_TEMPLATES[targetTemplate]) {
       return res.status(400).json({ error: "Invalid template" });
     }
 
