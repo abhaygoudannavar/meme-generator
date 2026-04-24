@@ -14,6 +14,23 @@ const OPENAI_CONFIGURED = Boolean(
   OPENAI_KEY && !OPENAI_KEY.includes("your_openai_key_here")
 );
 
+// Preload fonts for massive performance boost
+const FONTS = {};
+async function preloadFonts() {
+  try {
+    FONTS.largeWhite = await Jimp.loadFont(Jimp.FONT_SANS_64_WHITE);
+    FONTS.mediumWhite = await Jimp.loadFont(Jimp.FONT_SANS_32_WHITE);
+    FONTS.smallWhite = await Jimp.loadFont(Jimp.FONT_SANS_16_WHITE);
+    FONTS.largeBlack = await Jimp.loadFont(Jimp.FONT_SANS_64_BLACK);
+    FONTS.mediumBlack = await Jimp.loadFont(Jimp.FONT_SANS_32_BLACK);
+    FONTS.smallBlack = await Jimp.loadFont(Jimp.FONT_SANS_16_BLACK);
+    console.log("Fonts preloaded successfully.");
+  } catch (err) {
+    console.error("Failed to preload fonts:", err);
+  }
+}
+preloadFonts();
+
 const PREVIEW_SVG = {
   drake: `<svg xmlns='http://www.w3.org/2000/svg' width='480' height='300'><rect width='100%' height='100%' fill='#f4f4f4'/><text x='240' y='150' font-size='26' text-anchor='middle' fill='#222'>DRAKE</text></svg>`,
   distracted: `<svg xmlns='http://www.w3.org/2000/svg' width='480' height='300'><rect width='100%' height='100%' fill='#93c5fd'/><text x='240' y='150' font-size='24' text-anchor='middle' fill='#222'>DISTRACTED</text></svg>`,
@@ -191,7 +208,8 @@ Two Buttons: Write documentation ||| Ship broken code ||| Why is everyone confus
         headers: {
           Authorization: `Bearer ${keyToUse}`,
           "Content-Type": "application/json"
-        }
+        },
+        timeout: 8000 // 8-second timeout to ensure the app stays snappy
       }
     );
 
@@ -241,12 +259,8 @@ async function printMemeText(image, text, box) {
   const maxHeight = Math.floor(height * box.height);
   const content = String(text).toUpperCase();
 
-  const largeWhite = await Jimp.loadFont(Jimp.FONT_SANS_64_WHITE);
-  const mediumWhite = await Jimp.loadFont(Jimp.FONT_SANS_32_WHITE);
-  const smallWhite = await Jimp.loadFont(Jimp.FONT_SANS_16_WHITE);
-
-  const fontChoices = [largeWhite, mediumWhite, smallWhite];
-  const selected = fontChoices.find((font) => Jimp.measureTextHeight(font, content, maxWidth) <= maxHeight) || smallWhite;
+  const fontChoices = [FONTS.largeWhite, FONTS.mediumWhite, FONTS.smallWhite];
+  const selected = fontChoices.find((font) => Jimp.measureTextHeight(font, content, maxWidth) <= maxHeight) || FONTS.smallWhite;
   const textHeight = Jimp.measureTextHeight(selected, content, maxWidth);
   const yCentered = y + Math.max(0, Math.floor((maxHeight - textHeight) / 2));
 
@@ -254,11 +268,12 @@ async function printMemeText(image, text, box) {
     [-2, 0], [2, 0], [0, -2], [0, 2],
     [-2, -2], [2, 2], [-2, 2], [2, -2]
   ];
-  const blackFont = selected === largeWhite
-    ? await Jimp.loadFont(Jimp.FONT_SANS_64_BLACK)
-    : selected === mediumWhite
-      ? await Jimp.loadFont(Jimp.FONT_SANS_32_BLACK)
-      : await Jimp.loadFont(Jimp.FONT_SANS_16_BLACK);
+  
+  const blackFont = selected === FONTS.largeWhite
+    ? FONTS.largeBlack
+    : selected === FONTS.mediumWhite
+      ? FONTS.mediumBlack
+      : FONTS.smallBlack;
 
   outlineOffsets.forEach(([ox, oy]) => {
     image.print(

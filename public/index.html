@@ -543,7 +543,7 @@
           const data = await response.json();
           
           if (data.success) {
-            display.innerHTML = `<img src="${data.image}" alt="Generated Meme" style="max-width: 100%; height: auto; display: block; margin: auto;">`;
+            display.innerHTML = `<img src="${data.image}" alt="Meme about ${topic}" style="max-width: 100%; height: auto; display: block; margin: auto;">`;
             currentMeme = data.image;
           } else {
             display.innerHTML = `<div style="padding: 20px; color: var(--error);"><strong>Error:</strong> ${data.error || "Failed to generate"}</div>`;
