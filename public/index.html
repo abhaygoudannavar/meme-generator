@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MemeGen | Neo-Brutalist</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --bg-color: #fcd34d; /* Yellow */
+        --card-bg: #ffffff;
+        --border-color: #000000;
+        --border-width: 4px;
+        --shadow-color: #000000;
+        --shadow-offset: 8px;
+        --accent-color: #f472b6; /* Pink */
+        --accent-hover: #db2777;
+        --text-color: #000000;
+        --success: #4ade80;
+        --error: #f87171;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Space Grotesk', sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        min-height: 100vh;
+        overflow: hidden; /* Prevent body scroll, layout handles it */
+      }
+
+      .layout {
+        display: flex;
+        height: 100vh;
+        width: 100vw;
+      }
+
+      /* Left Sidebar - Controls */
+      .sidebar {
+        width: 45%;
+        max-width: 600px;
+        min-width: 350px;
+        height: 100%;
+        overflow-y: auto;
+        padding: 40px;
+        border-right: var(--border-width) solid var(--border-color);
+        background-color: #fdf2f8; /* Very light pink background for sidebar */
+      }
+
+      /* Right Main - Output */
+      .main-content {
+        flex: 1;
+        height: 100%;
+        padding: 40px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-color: var(--bg-color);
+        background-image: radial-gradient(#000 1px, transparent 1px);
+        background-size: 20px 20px;
+        position: relative;
+        overflow-y: auto;
+      }
+
+      /* Typography */
+      h1 {
+        font-size: 3em;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+        letter-spacing: -1px;
+      }
+
+      h2 {
+        font-size: 1.5em;
+        font-weight: 700;
+        margin-bottom: 15px;
+        text-transform: uppercase;
+        border-bottom: var(--border-width) solid var(--border-color);
+        padding-bottom: 5px;
+      }
+
+      .subtitle {
+        font-size: 1.1em;
+        font-weight: 600;
+        margin-bottom: 30px;
+      }
+
+      /* Brutalist Elements */
+      .brutal-card {
+        background-color: var(--card-bg);
+        border: var(--border-width) solid var(--border-color);
+        box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--shadow-color);
+        padding: 25px;
+        margin-bottom: 40px;
+      }
+
+      .brutal-input {
+        width: 100%;
+        padding: 15px;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 16px;
+        font-weight: 600;
+        border: var(--border-width) solid var(--border-color);
+        background-color: #fff;
+        transition: all 0.2s;
+        margin-bottom: 15px;
+      }
+      .brutal-input:focus {
+        outline: none;
+        box-shadow: 4px 4px 0 var(--shadow-color);
+        transform: translate(-4px, -4px);
+      }
+
+      .brutal-btn {
+        width: 100%;
+        padding: 20px;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.2em;
+        font-weight: 700;
+        text-transform: uppercase;
+        background-color: var(--accent-color);
+        color: #fff;
+        border: var(--border-width) solid var(--border-color);
+        box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--shadow-color);
+        cursor: pointer;
+        transition: all 0.1s;
+      }
+      .brutal-btn:active {
+        box-shadow: 0 0 0 var(--shadow-color);
+        transform: translate(var(--shadow-offset), var(--shadow-offset));
+      }
+      .brutal-btn:disabled {
+        background-color: #d1d5db;
+        cursor: not-allowed;
+      }
+
+      .brutal-btn.secondary {
+        background-color: #60a5fa; /* Blue */
+      }
+
+      /* Settings / Engine Area */
+      .engine-status {
+        display: inline-block;
+        padding: 5px 10px;
+        border: 2px solid var(--border-color);
+        font-weight: 700;
+        font-size: 14px;
+        margin-bottom: 20px;
+        background-color: #fff;
+      }
+
+      .api-key-container {
+        margin-bottom: 30px;
+      }
+      .api-key-container label {
+        display: block;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+
+      /* Trending Topics */
+      .trending-topics {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 15px;
+      }
+      .topic-chip {
+        padding: 8px 16px;
+        background-color: #fff;
+        border: 2px solid var(--border-color);
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.1s;
+        box-shadow: 2px 2px 0 var(--shadow-color);
+      }
+      .topic-chip:hover {
+        transform: translate(-2px, -2px);
+        box-shadow: 4px 4px 0 var(--shadow-color);
+      }
+      .topic-chip.active {
+        background-color: var(--accent-color);
+        color: #fff;
+      }
+
+      /* Templates Grid */
+      .templates {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 15px;
+      }
+      .template-card {
+        border: var(--border-width) solid var(--border-color);
+        background: #fff;
+        cursor: pointer;
+        transition: all 0.1s;
+        box-shadow: 4px 4px 0 var(--shadow-color);
+        display: flex;
+        flex-direction: column;
+      }
+      .template-card:hover {
+        transform: translate(-2px, -2px);
+        box-shadow: 6px 6px 0 var(--shadow-color);
+      }
+      .template-card.active {
+        background-color: var(--bg-color);
+        box-shadow: 0 0 0 var(--shadow-color);
+        transform: translate(4px, 4px);
+      }
+      .template-card img {
+        width: 100%;
+        height: 100px;
+        object-fit: cover;
+        border-bottom: var(--border-width) solid var(--border-color);
+      }
+      .template-card p {
+        padding: 8px;
+        text-align: center;
+        font-weight: 700;
+        font-size: 12px;
+        flex-grow: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Main Content Output Area */
+      .meme-display-wrapper {
+        width: 100%;
+        max-width: 800px;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .meme-display {
+        width: 100%;
+        min-height: 400px;
+        background-color: #fff;
+        border: var(--border-width) solid var(--border-color);
+        box-shadow: 12px 12px 0 var(--shadow-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        position: relative;
+      }
+
+      .meme-display img {
+        max-width: 100%;
+        max-height: 70vh;
+        border: 2px solid var(--border-color);
+      }
+
+      .placeholder-content {
+        font-size: 2em;
+        font-weight: 700;
+        text-align: center;
+        opacity: 0.3;
+      }
+
+      /* Loader */
+      .loader {
+        border: 8px solid #fff;
+        border-top: 8px solid var(--border-color);
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 15px;
+      }
+      .loader-text {
+        font-weight: 700;
+        font-size: 1.5em;
+        text-transform: uppercase;
+        animation: blink 1s infinite;
+      }
+      @keyframes spin { 100% { transform: rotate(360deg); } }
+      @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+      /* Toast */
+      .toast {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        background: #fff;
+        border: var(--border-width) solid var(--border-color);
+        box-shadow: 8px 8px 0 var(--shadow-color);
+        padding: 20px;
+        font-weight: 700;
+        font-size: 1.2em;
+        z-index: 1000;
+        transform: translateY(150%);
+        transition: transform 0.2s cubic-bezier(0, 0, 0.2, 1);
+      }
+      .toast.show { transform: translateY(0); }
+      .toast.success { background-color: var(--success); }
+      .toast.error { background-color: var(--error); color: #fff; }
+
+      @media (max-width: 900px) {
+        .layout { flex-direction: column; height: auto; overflow: auto; }
+        .sidebar { width: 100%; max-width: none; border-right: none; border-bottom: var(--border-width) solid var(--border-color); }
+        .main-content { min-height: 80vh; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <!-- Sidebar Controls -->
+      <aside class="sidebar">
+        <header>
+          <h1>MemeGen</h1>
+          <p class="subtitle">NO AI GRADIENTS HERE.</p>
+        </header>
+
+        <div class="brutal-card">
+          <h2>1. 🧠 AI Intelligence Level</h2>
+          <p style="font-size: 14px; margin-bottom: 15px; border: 2px solid #000; padding: 10px; background: #fff;">
+            <strong>Heads up!</strong> By default, this app uses pre-written generic jokes. If you want TRUE, unique AI-generated memes, you must provide your own OpenAI API key. We do not provide free keys!
+          </p>
+          <div class="engine-status" id="statusBadge">Checking Status...</div>
+          <div class="api-key-container">
+            <label for="apiKey">Paste your OpenAI key here:</label>
+            <input type="password" id="apiKey" class="brutal-input" placeholder="sk-..." />
+            <small style="font-weight: 600;">Stored locally. No key? We'll still give you basic memes!</small>
+          </div>
+        </div>
+
+        <div class="brutal-card">
+          <h2>2. Topic</h2>
+          <div class="trending-topics" id="trendingTopics">
+            <!-- Topics loaded dynamically -->
+          </div>
+          <input type="text" id="customTopic" class="brutal-input" placeholder="Or type your own topic..." />
+        </div>
+
+        <div class="brutal-card">
+          <h2>3. Template</h2>
+          <div style="margin-bottom: 20px;">
+            <label for="customImageInput" style="font-weight: 700; display: block; margin-bottom: 5px;">Upload Custom Meme (Overrides Template)</label>
+            <input type="file" id="customImageInput" accept="image/*" class="brutal-input" style="padding: 10px; margin-bottom: 10px;" />
+            <img id="customImagePreview" src="" alt="Custom Image Preview" style="display: none; max-width: 100px; max-height: 100px; border: 2px solid #000; border-radius: 4px;" />
+          </div>
+          <div class="templates" id="templates">
+            <!-- Templates loaded dynamically -->
+          </div>
+        </div>
+
+        <div class="brutal-card">
+          <h2>4. Extras</h2>
+          <label style="font-weight: 700; display: flex; align-items: center; cursor: pointer; gap: 10px;">
+            <input type="checkbox" id="deepFryToggle" style="width: 20px; height: 20px; accent-color: var(--accent-color);" />
+            🔥 DEEP FRY MEME 🔥
+          </label>
+        </div>
+
+      </aside>
+
+      <!-- Main Content Output -->
+      <main class="main-content">
+        <div class="meme-display-wrapper">
+          <div class="meme-display" id="memeDisplay">
+            <div class="placeholder-content">
+              YOUR MEME<br/>WILL APPEAR HERE
+            </div>
+          </div>
+          
+          <div style="margin-top: 30px; width: 100%; display: flex; gap: 20px;">
+            <button class="brutal-btn" id="generateBtn" disabled>Generate</button>
+            <button class="brutal-btn secondary" id="downloadBtn" style="display: none;">Download</button>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">Message</div>
+
+    <script>
+      let selectedTopic = null;
+      let selectedTemplate = null;
+      let currentMeme = null;
+      let customImageBase64 = null;
+
+      // Handle API Key Persistence
+      const apiKeyInput = document.getElementById('apiKey');
+      const savedKey = localStorage.getItem('memegen_api_key');
+      if (savedKey) {
+        apiKeyInput.value = savedKey;
+      }
+      apiKeyInput.addEventListener('input', (e) => {
+        localStorage.setItem('memegen_api_key', e.target.value.trim());
+      });
+
+      function showToast(message, type = 'success') {
+        const toast = document.getElementById('toast');
+        toast.className = 'toast show ' + type;
+        toast.textContent = message;
+        setTimeout(() => toast.classList.remove('show'), 3000);
+      }
+
+      async function loadStatus() {
+        const badge = document.getElementById("statusBadge");
+        try {
+          const response = await fetch("/api/status");
+          const data = await response.json();
+          if (data.openaiConfigured) {
+            badge.textContent = "✨ SMART AI ENABLED";
+            badge.style.backgroundColor = "var(--success)";
+          } else {
+            badge.textContent = "💡 BASIC MODE";
+            badge.style.backgroundColor = "var(--bg-color)";
+          }
+        } catch (err) {
+          badge.textContent = "❌ OFFLINE";
+          badge.style.backgroundColor = "var(--error)";
+        }
+      }
+
+      async function loadTrending() {
+        try {
+          const response = await fetch("/api/trending");
+          const data = await response.json();
+          const container = document.getElementById("trendingTopics");
+          container.innerHTML = "";
+          data.topics.forEach((topic) => {
+            const chip = document.createElement("button");
+            chip.className = "topic-chip";
+            chip.textContent = topic;
+            chip.onclick = () => selectTopic(topic, chip);
+            container.appendChild(chip);
+          });
+        } catch (err) {
+          document.getElementById("trendingTopics").innerHTML = '<b>Failed to load topics</b>';
+        }
+      }
+
+      async function loadTemplates() {
+        try {
+          const response = await fetch("/api/templates");
+          const data = await response.json();
+          const container = document.getElementById("templates");
+          container.innerHTML = "";
+          data.templates.forEach((template) => {
+            const card = document.createElement("div");
+            card.className = "template-card";
+            card.innerHTML = `<img src="${template.preview}" alt="${template.name}"><p>${template.name}</p>`;
+            card.onclick = () => selectTemplate(template.id, card);
+            container.appendChild(card);
+          });
+        } catch (err) {
+          document.getElementById("templates").innerHTML = '<b>Failed to load templates</b>';
+        }
+      }
+
+      document.getElementById('customImageInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const preview = document.getElementById("customImagePreview");
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function(event) {
+            customImageBase64 = event.target.result;
+            preview.src = customImageBase64;
+            preview.style.display = "block";
+            document.querySelectorAll(".template-card").forEach(c => c.classList.remove("active"));
+            selectedTemplate = null;
+            checkReady();
+          };
+          reader.readAsDataURL(file);
+        } else {
+          customImageBase64 = null;
+          preview.src = "";
+          preview.style.display = "none";
+          checkReady();
+        }
+      });
+
+      function selectTopic(topic, element) {
+        selectedTopic = topic;
+        document.querySelectorAll(".topic-chip").forEach((chip) => chip.classList.remove("active"));
+        element.classList.add("active");
+        document.getElementById("customTopic").value = "";
+        checkReady();
+      }
+
+      function selectTemplate(template, element) {
+        selectedTemplate = template;
+        document.querySelectorAll(".template-card").forEach((card) => card.classList.remove("active"));
+        element.classList.add("active");
+        
+        // Clear custom image if template is selected
+        document.getElementById('customImageInput').value = "";
+        customImageBase64 = null;
+        
+        checkReady();
+      }
+
+      function checkReady() {
+        const customTopic = document.getElementById("customTopic").value.trim();
+        const ready = (selectedTopic || customTopic) && (selectedTemplate || customImageBase64);
+        document.getElementById("generateBtn").disabled = !ready;
+      }
+
+      async function generateMeme() {
+        const customTopic = document.getElementById("customTopic").value.trim();
+        const topic = customTopic || selectedTopic;
+        const apiKey = document.getElementById("apiKey").value.trim();
+        const deepFry = document.getElementById("deepFryToggle").checked;
+        const display = document.getElementById("memeDisplay");
+        const btn = document.getElementById("generateBtn");
+        
+        display.innerHTML = `
+          <div style="text-align: center;">
+            <div class="loader"></div>
+            <div class="loader-text">COOKING...</div>
+          </div>
+        `;
+        document.getElementById("downloadBtn").style.display = "none";
+        btn.disabled = true;
+
+        try {
+          const response = await fetch("/api/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              topic, 
+              template: selectedTemplate || 'custom', 
+              apiKey,
+              deepFry,
+              customImage: customImageBase64
+            })
+          });
+          const data = await response.json();
+          
+          if (data.success) {
+            display.innerHTML = `<img src="${data.image}" alt="Generated Meme" style="max-width: 100%; height: auto; display: block; margin: auto;">`;
+            currentMeme = data.image;
+          } else {
+            display.innerHTML = `<div style="padding: 20px; color: var(--error);"><strong>Error:</strong> ${data.error || "Failed to generate"}</div>`;
+            alert("Error generating meme: " + (data.error || "Unknown error"));
+          }
+        } catch (error) {
+          display.innerHTML = `<div style="padding: 20px; color: var(--error);"><strong>Error:</strong> ${error.message}</div>`;
+          alert("Network Error: " + error.message);
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = "GENERATE";
+          showToast();
+        }
+      }
+
+      function downloadMeme() {
+        if (!currentMeme) return;
+        const link = document.createElement("a");
+        link.href = currentMeme;
+        link.download = `brutal-meme-${Date.now()}.png`;
+        link.click();
+      }
+
+      document.getElementById("customTopic").addEventListener("input", (e) => {
+        if (e.target.value.trim()) {
+          selectedTopic = null;
+          document.querySelectorAll(".topic-chip").forEach((chip) => chip.classList.remove("active"));
+        }
+        checkReady();
+      });
+      document.getElementById("generateBtn").addEventListener("click", generateMeme);
+      document.getElementById("downloadBtn").addEventListener("click", downloadMeme);
+
+      // Initialize
+      loadTrending();
+      loadTemplates();
+      loadStatus();
+    </script>
+  </body>
+</html>
