@@ -1,5 +1,7 @@
 # MemeGen: Neo-Brutalist AI Meme Generator 🚀
 
+**Live Demo**: [https://memes-here.netlify.app/](https://memes-here.netlify.app/)
+
 MemeGen is a high-performance, fully functional meme generator built with a striking **Neo-Brutalist** design system. It allows users to create hilarious memes using either **25 classic templates** or their own **custom image uploads**.
 
 The application is powered by `Express.js`, leverages `Jimp` for on-the-fly image manipulation, and integrates with the **OpenAI API** to automatically generate context-aware, highly relevant meme text based on trending topics.
