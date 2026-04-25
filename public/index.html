@@ -324,15 +324,15 @@
         </header>
 
         <div class="brutal-card">
-          <h2>1. 🧠 AI Intelligence Level</h2>
+          <h2>1. 🧠 AI Engine</h2>
           <p style="font-size: 14px; margin-bottom: 15px; border: 2px solid #000; padding: 10px; background: #fff;">
-            <strong>Heads up!</strong> By default, this app uses pre-written generic jokes. If you want TRUE, unique AI-generated memes, you must provide your own OpenAI API key. We do not provide free keys!
+            <strong>Groq Llama 3!</strong> We are now powered by insanely fast open-source AI. Paste your free Groq API key below to enable Smart Mode and AI Boomer Translations!
           </p>
           <div class="engine-status" id="statusBadge">Checking Status...</div>
           <div class="api-key-container">
-            <label for="apiKey">Paste your OpenAI key here:</label>
-            <input type="password" id="apiKey" class="brutal-input" placeholder="sk-..." />
-            <small style="font-weight: 600;">Stored locally. No key? We'll still give you basic memes!</small>
+            <label for="apiKey">Paste your Groq API key here (Free):</label>
+            <input type="password" id="apiKey" class="brutal-input" placeholder="gsk_..." />
+            <small style="font-weight: 600;">Stored locally. No key? We'll still give you fallback memes!</small>
           </div>
         </div>
 
@@ -378,6 +378,12 @@
           <div style="margin-top: 30px; width: 100%; display: flex; gap: 20px;">
             <button class="brutal-btn" id="generateBtn" disabled>Generate</button>
             <button class="brutal-btn secondary" id="downloadBtn" style="display: none;">Download</button>
+            <button class="brutal-btn" id="explainBtn" style="display: none; background-color: #facc15; color: #000;">Explain 👴</button>
+          </div>
+
+          <div id="explanationBox" class="brutal-card" style="display: none; width: 100%; margin-top: 20px; background-color: #f8fafc;">
+            <h3 style="margin-bottom: 10px; text-transform: uppercase;">🤖 AI Translation (Boomer Dept.)</h3>
+            <p id="explanationText" style="font-family: serif; font-size: 1.1em; line-height: 1.6;"></p>
           </div>
         </div>
       </main>
@@ -394,12 +400,12 @@
 
       // Handle API Key Persistence
       const apiKeyInput = document.getElementById('apiKey');
-      const savedKey = localStorage.getItem('memegen_api_key');
+      const savedKey = localStorage.getItem('memegen_groq_key');
       if (savedKey) {
         apiKeyInput.value = savedKey;
       }
       apiKeyInput.addEventListener('input', (e) => {
-        localStorage.setItem('memegen_api_key', e.target.value.trim());
+        localStorage.setItem('memegen_groq_key', e.target.value.trim());
       });
 
       function showToast(message, type = 'success') {
@@ -414,8 +420,8 @@
         try {
           const response = await fetch("/api/status");
           const data = await response.json();
-          if (data.openaiConfigured) {
-            badge.textContent = "✨ SMART AI ENABLED";
+          if (data.groqConfigured) {
+            badge.textContent = "✨ GROQ LLAMA 3 ENABLED";
             badge.style.backgroundColor = "var(--success)";
           } else {
             badge.textContent = "💡 BASIC MODE";
@@ -547,10 +553,12 @@
           const data = await response.json();
           
           if (data.success) {
-            display.innerHTML = `<img src="${data.image}" alt="Generated Meme" style="max-width: 100%; height: auto; display: block; margin: auto;">`;
+            display.innerHTML = `<img src="${data.image}" alt="Meme about ${topic}" style="max-width: 100%; height: auto; display: block; margin: auto;">`;
             currentMeme = data.image;
             document.getElementById("downloadBtn").style.display = "block";
             showToast("Meme Generated!", "success");
+            document.getElementById("explainBtn").style.display = "block";
+            document.getElementById("explanationBox").style.display = "none";
           } else {
             display.innerHTML = `<div style="padding: 20px; color: var(--error);"><strong>Error:</strong> ${data.error || "Failed to generate"}</div>`;
             alert("Error generating meme: " + (data.error || "Unknown error"));
@@ -572,6 +580,43 @@
         link.click();
       }
 
+      async function explainMeme() {
+        const customTopic = document.getElementById("customTopic").value.trim();
+        const topic = customTopic || selectedTopic;
+        const apiKey = document.getElementById("apiKey").value.trim();
+        const explainBtn = document.getElementById("explainBtn");
+        const explainBox = document.getElementById("explanationBox");
+        const explainText = document.getElementById("explanationText");
+
+        explainBtn.disabled = true;
+        explainBtn.textContent = "Analyzing...";
+
+        try {
+          const response = await fetch("/api/explain", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              topic, 
+              template: selectedTemplate || 'custom', 
+              apiKey
+            })
+          });
+          const data = await response.json();
+          
+          if (data.explanation) {
+            explainText.textContent = data.explanation;
+            explainBox.style.display = "block";
+          } else {
+            alert("Failed to get explanation.");
+          }
+        } catch (error) {
+          alert("Network Error: " + error.message);
+        } finally {
+          explainBtn.disabled = false;
+          explainBtn.textContent = "Explain 👴";
+        }
+      }
+
       document.getElementById("customTopic").addEventListener("input", (e) => {
         if (e.target.value.trim()) {
           selectedTopic = null;
@@ -581,6 +626,7 @@
       });
       document.getElementById("generateBtn").addEventListener("click", generateMeme);
       document.getElementById("downloadBtn").addEventListener("click", downloadMeme);
+      document.getElementById("explainBtn").addEventListener("click", explainMeme);
 
       // Initialize
       loadTrending();

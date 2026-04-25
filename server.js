@@ -9,10 +9,27 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" })); // Increased limit for custom images
 app.use(express.static("public"));
 
-const OPENAI_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_CONFIGURED = Boolean(
-  OPENAI_KEY && !OPENAI_KEY.includes("your_openai_key_here")
+const GROQ_KEY = process.env.GROQ_API_KEY;
+const GROQ_CONFIGURED = Boolean(
+  GROQ_KEY && !GROQ_KEY.includes("your_groq_key_here")
 );
+
+// Preload fonts for massive performance boost
+const FONTS = {};
+async function preloadFonts() {
+  try {
+    FONTS.largeWhite = await Jimp.loadFont(Jimp.FONT_SANS_64_WHITE);
+    FONTS.mediumWhite = await Jimp.loadFont(Jimp.FONT_SANS_32_WHITE);
+    FONTS.smallWhite = await Jimp.loadFont(Jimp.FONT_SANS_16_WHITE);
+    FONTS.largeBlack = await Jimp.loadFont(Jimp.FONT_SANS_64_BLACK);
+    FONTS.mediumBlack = await Jimp.loadFont(Jimp.FONT_SANS_32_BLACK);
+    FONTS.smallBlack = await Jimp.loadFont(Jimp.FONT_SANS_16_BLACK);
+    console.log("Fonts preloaded successfully.");
+  } catch (err) {
+    console.error("Failed to preload fonts:", err);
+  }
+}
+preloadFonts();
 
 const PREVIEW_SVG = {
   drake: `<svg xmlns='http://www.w3.org/2000/svg' width='480' height='300'><rect width='100%' height='100%' fill='#f4f4f4'/><text x='240' y='150' font-size='26' text-anchor='middle' fill='#222'>DRAKE</text></svg>`,
@@ -162,8 +179,8 @@ function fallbackLines(topic, template, boxCount) {
 
 async function generateMemeText(topic, template, apiKey) {
   const boxCount = MEME_TEMPLATES[template].boxes.length;
-  const keyToUse = apiKey || OPENAI_KEY;
-  const isConfigured = Boolean(keyToUse && !keyToUse.includes("your_openai_key_here"));
+  const keyToUse = apiKey || GROQ_KEY;
+  const isConfigured = Boolean(keyToUse && !keyToUse.includes("your_groq_key_here"));
 
   if (!isConfigured) {
     return fallbackLines(topic, template, boxCount);
@@ -180,9 +197,9 @@ Two Buttons: Write documentation ||| Ship broken code ||| Why is everyone confus
 
   try {
     const response = await axios.post(
-      "https://api.openai.com/v1/chat/completions",
+      "https://api.groq.com/openai/v1/chat/completions",
       {
-        model: "gpt-4o-mini",
+        model: "llama-3.1-8b-instant",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.9,
         max_tokens: 150
@@ -191,7 +208,8 @@ Two Buttons: Write documentation ||| Ship broken code ||| Why is everyone confus
         headers: {
           Authorization: `Bearer ${keyToUse}`,
           "Content-Type": "application/json"
-        }
+        },
+        timeout: 8000 // 8-second timeout to ensure the app stays snappy
       }
     );
 
@@ -201,7 +219,7 @@ Two Buttons: Write documentation ||| Ship broken code ||| Why is everyone confus
     }
     return text.split("|||").map((t) => t.trim()).slice(0, boxCount);
   } catch (error) {
-    console.error("OpenAI Error:", error.response?.data || error.message);
+    console.error("Groq Error:", error.response?.data || error.message);
     return fallbackLines(topic, template, boxCount);
   }
 }
@@ -241,12 +259,8 @@ async function printMemeText(image, text, box) {
   const maxHeight = Math.floor(height * box.height);
   const content = String(text).toUpperCase();
 
-  const largeWhite = await Jimp.loadFont(Jimp.FONT_SANS_64_WHITE);
-  const mediumWhite = await Jimp.loadFont(Jimp.FONT_SANS_32_WHITE);
-  const smallWhite = await Jimp.loadFont(Jimp.FONT_SANS_16_WHITE);
-
-  const fontChoices = [largeWhite, mediumWhite, smallWhite];
-  const selected = fontChoices.find((font) => Jimp.measureTextHeight(font, content, maxWidth) <= maxHeight) || smallWhite;
+  const fontChoices = [FONTS.largeWhite, FONTS.mediumWhite, FONTS.smallWhite];
+  const selected = fontChoices.find((font) => Jimp.measureTextHeight(font, content, maxWidth) <= maxHeight) || FONTS.smallWhite;
   const textHeight = Jimp.measureTextHeight(selected, content, maxWidth);
   const yCentered = y + Math.max(0, Math.floor((maxHeight - textHeight) / 2));
 
@@ -254,11 +268,12 @@ async function printMemeText(image, text, box) {
     [-2, 0], [2, 0], [0, -2], [0, 2],
     [-2, -2], [2, 2], [-2, 2], [2, -2]
   ];
-  const blackFont = selected === largeWhite
-    ? await Jimp.loadFont(Jimp.FONT_SANS_64_BLACK)
-    : selected === mediumWhite
-      ? await Jimp.loadFont(Jimp.FONT_SANS_32_BLACK)
-      : await Jimp.loadFont(Jimp.FONT_SANS_16_BLACK);
+  
+  const blackFont = selected === FONTS.largeWhite
+    ? FONTS.largeBlack
+    : selected === FONTS.mediumWhite
+      ? FONTS.mediumBlack
+      : FONTS.smallBlack;
 
   outlineOffsets.forEach(([ox, oy]) => {
     image.print(
@@ -334,8 +349,8 @@ app.get("/api/trending", async (_req, res) => {
 
 app.get("/api/status", (_req, res) => {
   res.json({
-    mode: OPENAI_CONFIGURED ? "openai" : "fallback",
-    openaiConfigured: OPENAI_CONFIGURED
+    mode: GROQ_CONFIGURED ? "groq" : "fallback",
+    groqConfigured: GROQ_CONFIGURED
   });
 });
 
@@ -374,6 +389,49 @@ app.post("/api/generate", async (req, res) => {
   } catch (error) {
     console.error("Generation error:", error);
     return res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/explain", async (req, res) => {
+  try {
+    const { topic, template, apiKey } = req.body;
+    const keyToUse = apiKey || GROQ_KEY;
+    const isConfigured = Boolean(keyToUse && !keyToUse.includes("your_groq_key_here"));
+
+    if (!isConfigured) {
+      return res.json({ 
+        explanation: `This digital image, commonly referred to as a "meme," utilizes the "${template}" format to humorously address the subject of "${topic}". The juxtaposition of the recognizable image with the relatable text is intended to evoke amusement in the viewer.`
+      });
+    }
+
+    const prompt = `You are a highly advanced but incredibly out-of-touch AI designed to explain youth culture to Boomers. Write a hilariously dry, clinical, 2-sentence explanation of why a meme about "${topic}" using the "${template}" format is supposedly "funny." Be overly literal and slightly confused. End the explanation with a classic, out-of-touch boomer remark (e.g., "Kids these days...").`;
+
+    const response = await axios.post(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        model: "llama-3.1-8b-instant",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.8,
+        max_tokens: 150
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${keyToUse}`,
+          "Content-Type": "application/json"
+        },
+        timeout: 8000
+      }
+    );
+
+    const explanation = response.data.choices?.[0]?.message?.content?.trim() || "Explanation unavailable.";
+    return res.json({ explanation });
+  } catch (error) {
+    const errorDetails = error.response?.data?.error?.message || error.message;
+    console.error("Explanation error:", errorDetails);
+    
+    return res.json({ 
+      explanation: `(Fallback Mode) The Groq API call failed! Error details: ${errorDetails}. Please ensure your API key is correct and valid.`
+    });
   }
 });
 
